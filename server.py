@@ -19,13 +19,18 @@ CHROMA_PATH    = os.environ.get("CHROMA_PATH",    str(Path.home() / ".rag-profil
 EMBED_MODEL    = os.environ.get("EMBED_MODEL",    "all-MiniLM-L6-v2")
 COLLECTION     = "brain_wiki"
 
-# ── Chroma setup ───────────────────────────────────────────────────────────
+# ── Chroma setup (lazy — avoid loading the embedding model at import time) ──
 Path(CHROMA_PATH).mkdir(parents=True, exist_ok=True)
 
-_ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=EMBED_MODEL)
-_client = chromadb.PersistentClient(path=CHROMA_PATH)
+_ef = None
+_client = None
 
 def _get_collection():
+    global _ef, _client
+    if _ef is None:
+        _ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=EMBED_MODEL)
+    if _client is None:
+        _client = chromadb.PersistentClient(path=CHROMA_PATH)
     return _client.get_or_create_collection(name=COLLECTION, embedding_function=_ef)
 
 def _chunk_text(text: str, size: int = 500, overlap: int = 50) -> list[str]:
